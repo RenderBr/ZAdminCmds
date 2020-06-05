@@ -190,7 +190,7 @@ namespace ZAdminCmds
 
 		}
 
-		public static Config generateNewConfig()
+		public static Config GenerateNewConfig()
 		{
 			Config newconfig = new Config();
 			int count = TShock.Groups.Count();
@@ -405,12 +405,12 @@ namespace ZAdminCmds
 					return;
 				}
 
-				List<TSPlayer> mutedplayerlist = TShock.Utils.FindPlayer(args.Parameters[0]);
+				List<TSPlayer> mutedplayerlist = TSPlayer.FindByNameOrID(args.Parameters[0]);
 
 				if (mutedplayerlist.Count == 0)
 					args.Player.SendErrorMessage("No players matched.");
 				else if (mutedplayerlist.Count > 1)
-					TShock.Utils.SendMultipleMatchError(args.Player, mutedplayerlist.Select(p => p.Name));
+					args.Player.SendMultipleMatchError(mutedplayerlist.Select(p => p.Name));
 				else
 				{
 					TSPlayer mutedplayer = mutedplayerlist[0];
@@ -453,12 +453,12 @@ namespace ZAdminCmds
 			{
 				if (args.Parameters[0] == "-check")
 				{
-					List<TSPlayer> mutedplayerlist = TShock.Utils.FindPlayer(args.Parameters[1]);
+					List<TSPlayer> mutedplayerlist = TSPlayer.FindByNameOrID(args.Parameters[1]);
 
 					if (mutedplayerlist.Count == 0)
 						args.Player.SendErrorMessage("No players matched.");
 					else if (mutedplayerlist.Count > 1)
-						TShock.Utils.SendMultipleMatchError(args.Player, mutedplayerlist.Select(p => p.Name));
+						args.Player.SendMultipleMatchError(mutedplayerlist.Select(p => p.Name));
 					else
 					{
 						TSPlayer mutedplayer = mutedplayerlist[0];
@@ -484,7 +484,7 @@ namespace ZAdminCmds
 					int temp = 0;
 					if (args.Parameters[1] == "all" || args.Parameters[1].ToLower() == "mute" || args.Parameters[1].ToLower() == "pmute")
 					{
-						temp = clearMutes(args.Parameters[1]);
+						temp = ClearMutes(args.Parameters[1]);
 						if (!args.Silent)
 						{
 							if (args.Parameters[1] == "all")
@@ -611,7 +611,7 @@ namespace ZAdminCmds
 		}
 		#endregion
 
-		private int clearMutes(string type)
+		private int ClearMutes(string type)
 		{
 			int count = 0;
 

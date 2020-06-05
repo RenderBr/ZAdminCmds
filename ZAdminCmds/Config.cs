@@ -21,7 +21,7 @@ namespace ZAdminCmds
 
 		public Config Read(string path)
 		{
-			return !File.Exists(path) ? ZAdmin.generateNewConfig() : JsonConvert.DeserializeObject<Config>(File.ReadAllText(path));
+			return !File.Exists(path) ? ZAdmin.GenerateNewConfig() : JsonConvert.DeserializeObject<Config>(File.ReadAllText(path));
 		}
 	}
 }
