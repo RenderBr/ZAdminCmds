@@ -6,7 +6,7 @@
  */
 
 using Microsoft.Xna.Framework;
-using Mono.Data.Sqlite;
+using Microsoft.Data.Sqlite;
 using MySql.Data.MySqlClient;
 using System;
 using System.Collections.Generic;
@@ -15,7 +15,9 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Timers;
+using OTAPI;
 using Terraria;
+using Terraria.ObjectData;
 using TerrariaApi.Server;
 using TShockAPI;
 using TShockAPI.DB;
@@ -221,17 +223,17 @@ namespace ZAdminCmds
 			else
 			{
 				string playername = args.Parameters[0];
-				TShockAPI.DB.Ban bannedplayer = TShock.Bans.GetBanByName(playername);
+				TShockAPI.DB.Ban bannedplayer = TShock.Bans.GetBanById(TSPlayer.FindByNameOrID(playername)[0].Index);
 				if (bannedplayer == null)
 				{
 					args.Player.SendErrorMessage("No bans by this name were found.");
 				}
 				else
 				{
-					args.Player.SendInfoMessage("Account name: " + bannedplayer.Name + " (" + bannedplayer.IP + ")");
-					args.Player.SendInfoMessage("Date banned: " + bannedplayer.Date);
-					if (bannedplayer.Expiration != "")
-						args.Player.SendInfoMessage("Expiration date: " + bannedplayer.Expiration);
+					args.Player.SendInfoMessage("Account name: " + bannedplayer.Identifier + "");
+					args.Player.SendInfoMessage("Date banned: " + bannedplayer.BanDateTime);
+					if (bannedplayer.ExpirationDateTime != null)
+						args.Player.SendInfoMessage("Expiration date: " + bannedplayer.ExpirationDateTime);
 					args.Player.SendInfoMessage("Banning user: " + bannedplayer.BanningUser);
 					args.Player.SendInfoMessage("Reason: " + bannedplayer.Reason);
 				}
@@ -251,9 +253,9 @@ namespace ZAdminCmds
 				{
 					if (args.Parameters[0] == "-un")
 					{
-						var completebanlist = TShock.Bans.GetBans();
+						var completebanlist = TShock.Bans.RetrieveAllBans();
 
-						var bans = (from ban in completebanlist where ban.Name.ToLower().Contains(args.Parameters[1].ToLower()) select ban.Name);
+						var bans = (from ban in completebanlist where ban.Identifier.ToLower().Contains(args.Parameters[1].ToLower()) select ban.Identifier);
 
 						if (bans.Count() > 0)
 							args.Player.SendInfoMessage("Banned players found: {0}", string.Join(", ", bans));
@@ -287,23 +289,12 @@ namespace ZAdminCmds
 
 						}
 
-						var completebanlist = TShock.Bans.GetBans();
+						var completebanlist = TShock.Bans.RetrieveAllBans();
 
 						List<TShockAPI.DB.Ban> banlist = new List<TShockAPI.DB.Ban>();
 
-						foreach (TShockAPI.DB.Ban ban in completebanlist)
-						{
-							//shaddup I know it's poor code
-							var bannedipsplit = ban.IP.Split('.');
-							if (ip[0] == "*" || bannedipsplit[0] == ip[0])
-								if (ip[1] == "*" || bannedipsplit[1] == ip[1])
-									if (ip[2] == "*" || bannedipsplit[2] == ip[2])
-										if (ip[3] == "*" || bannedipsplit[3] == ip[3])
-											banlist.Add(ban);
-						}
-
 						if (banlist.Count > 0)
-							args.Player.SendInfoMessage("Banned players found: {0}", string.Join(", ", banlist.Select(p => p.Name)));
+							args.Player.SendInfoMessage("Banned players found: {0}", string.Join(", ", banlist.Select(p => p.Identifier)));
 						else
 							args.Player.SendErrorMessage("No banned players found by that IP.");
 
@@ -404,13 +395,16 @@ namespace ZAdminCmds
 
 					return;
 				}
-
+				
 				List<TSPlayer> mutedplayerlist = TSPlayer.FindByNameOrID(args.Parameters[0]);
 
 				if (mutedplayerlist.Count == 0)
 					args.Player.SendErrorMessage("No players matched.");
 				else if (mutedplayerlist.Count > 1)
-					args.Player.SendMultipleMatchError(mutedplayerlist.Select(p => p.Name));
+					foreach(TSPlayer player in mutedplayerlist)
+                    {
+						args.Player.SendMessage(player.Name, Color.Red);
+                    }
 				else
 				{
 					TSPlayer mutedplayer = mutedplayerlist[0];
@@ -660,25 +654,25 @@ namespace ZAdminCmds
 		#region Database
 		private void SetupDb()
 		{
-			if (TShock.Config.StorageType.ToLower() == "sqlite")
+			if (TShock.Config.Settings.StorageType.ToLower() == "sqlite")
 			{
 				string sql = Path.Combine(TShock.SavePath, "Dayregions.sqlite");
-				db = new SqliteConnection(string.Format("uri=file://{0},Version=3", sql));
+				db = new SqliteConnection(string.Format("Data Source={0}", sql));
 			}
-			else if (TShock.Config.StorageType.ToLower() == "mysql")
+			else if (TShock.Config.Settings.StorageType.ToLower() == "mysql")
 			{
 				try
 				{
-					var hostport = TShock.Config.MySqlHost.Split(':');
+					var hostport = TShock.Config.Settings.MySqlHost.Split(':');
 					db = new MySqlConnection()
 					{
 						ConnectionString =
 						String.Format("Server={0}; Port={1}; Database={2}; Uid={3}; Pwd={4};",
 									  hostport[0],
 									  hostport.Length > 1 ? hostport[1] : "3306",
-									  TShock.Config.MySqlDbName,
-									  TShock.Config.MySqlUsername,
-									  TShock.Config.MySqlPassword
+									  TShock.Config.Settings.MySqlDbName,
+									  TShock.Config.Settings.MySqlUsername,
+									  TShock.Config.Settings.MySqlPassword
 							)
 					};
 				}
